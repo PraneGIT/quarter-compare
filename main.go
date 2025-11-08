@@ -3,10 +3,37 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
 )
+
+// getOutputReportPath returns a dynamic path for report.html based on the user's system.
+// Preferred location: $HOME/Documents/quarter-compare/report.html
+// Fallbacks: executable directory, current working directory.
+func getOutputReportPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		dir := filepath.Join(home, "Documents", "quarter-compare")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return "", err
+		}
+		return filepath.Join(dir, "report.html"), nil
+	}
+	// fallback: executable directory
+	if exe, err2 := os.Executable(); err2 == nil {
+		dir := filepath.Dir(exe)
+		if err := os.MkdirAll(dir, 0o755); err == nil {
+			return filepath.Join(dir, "report.html"), nil
+		}
+	}
+	// final fallback: current working directory
+	if wd, err3 := os.Getwd(); err3 == nil {
+		return filepath.Join(wd, "report.html"), nil
+	}
+	return "report.html", nil
+}
 
 func main() {
 	// enable more verbose logging (timestamp + file:line)
@@ -116,7 +143,10 @@ func main() {
 	}
 
 	// 4. generate HTML report
-	outPath := filepath.Join("c:\\Users\\pranj\\Documents\\code\\go\\quarter-compare", "report.html")
+	outPath, err := getOutputReportPath()
+	if err != nil {
+		log.Fatalf("cannot determine output path: %v", err)
+	}
 	if err := GenerateHTMLReport(outPath, results); err != nil {
 		log.Fatalf("generate report: %v", err)
 	}
